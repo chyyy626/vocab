@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>外文單字本</title>
+  <meta name="description" content="蒐集日常看到的外文單字，自動翻譯成卡片複習。">
+  <meta name="theme-color" content="#f6f3ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16191d" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="單字本">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="" width="32" height="32">
+      <div>
+        <h1>外文單字本</h1>
+        <p class="sync" id="syncStatus">僅存在這台裝置</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="openSettings" aria-label="設定" title="設定">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3.5h-4L10.6 6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <!-- 新增單字 -->
+    <section class="panel" aria-labelledby="addTitle">
+      <h2 id="addTitle" class="section-title">新增單字</h2>
+      <div class="tabs" role="tablist">
+        <button role="tab" class="tab" data-tab="word" aria-selected="true">單字</button>
+        <button role="tab" class="tab" data-tab="text" aria-selected="false">一段文字</button>
+        <button role="tab" class="tab" data-tab="screenshot" aria-selected="false">截圖</button>
+      </div>
+
+      <form class="tab-pane" data-pane="word" id="wordForm">
+        <div class="row">
+          <input id="wordInput" type="text" placeholder="輸入外文單字或片語，例如 serendipity" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" required>
+          <button class="btn primary" type="submit">查詢</button>
+        </div>
+      </form>
+
+      <form class="tab-pane" data-pane="text" id="textForm" hidden>
+        <textarea id="textInput" rows="5" placeholder="貼上一段外文（新聞、貼文、歌詞…），AI 會挑出值得學的單字" required></textarea>
+        <button class="btn primary block" type="submit">找出單字</button>
+      </form>
+
+      <form class="tab-pane" data-pane="screenshot" id="shotForm" hidden>
+        <label class="dropzone" id="dropzone">
+          <input id="shotInput" type="file" accept="image/*" hidden>
+          <img id="shotPreview" alt="截圖預覽" hidden>
+          <span id="shotHint">點這裡選擇截圖<br><small>也可以直接拖曳或貼上圖片</small></span>
+        </label>
+        <button class="btn primary block" type="submit" id="shotSubmit" disabled>找出單字</button>
+      </form>
+
+      <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+      <div id="results" hidden>
+        <div class="results-head">
+          <span id="resultsCount"></span>
+          <button class="link-btn" type="button" id="toggleAll">全選</button>
+        </div>
+        <ul class="candidates" id="candidateList"></ul>
+        <div class="results-actions">
+          <button class="btn ghost" type="button" id="discardResults">取消</button>
+          <button class="btn primary" type="button" id="saveResults">加入單字庫</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 單字庫 -->
+    <section aria-labelledby="libTitle">
+      <div class="lib-head">
+        <h2 id="libTitle" class="section-title">我的單字 <span class="count" id="cardCount">0</span></h2>
+        <input id="search" type="search" placeholder="搜尋單字或中文" autocomplete="off">
+      </div>
+      <div class="chips" id="langChips"></div>
+      <div class="grid" id="cardGrid"></div>
+      <p class="empty" id="emptyState" hidden>還沒有單字。從上面輸入一個單字、貼上一段文字，或上傳截圖開始吧。</p>
+    </section>
+  </main>
+
+  <!-- 設定 -->
+  <dialog id="settings">
+    <form method="dialog" class="settings" id="settingsForm">
+      <header class="dialog-head">
+        <h2>設定</h2>
+        <button class="icon-btn" value="close" aria-label="關閉">✕</button>
+      </header>
+
+      <fieldset>
+        <legend id="aiLegend">AI 服務</legend>
+        <label>API Key
+          <input id="apiKey" type="password" autocomplete="off" spellcheck="false">
+        </label>
+        <p class="hint" id="apiKeyHint"></p>
+        <label>模型
+          <select id="model"></select>
+        </label>
+        <p class="hint">如果常出現「免費額度用完」，可以換成另一個模型試試，兩個的額度是分開計算的。</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>雲端同步（Supabase）</legend>
+        <label>Project URL
+          <input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co" spellcheck="false" autocomplete="off">
+        </label>
+        <label>Publishable key（或 anon key）
+          <input id="supabaseKey" type="text" placeholder="sb_publishable_… 或 eyJ…" spellcheck="false" autocomplete="off">
+        </label>
+        <div id="loggedOut">
+          <label>Email
+            <input id="email" type="email" autocomplete="username">
+          </label>
+          <label>密碼
+            <input id="password" type="password" autocomplete="current-password">
+          </label>
+          <button class="btn" type="button" id="loginBtn">儲存並登入</button>
+        </div>
+        <div id="loggedIn" hidden>
+          <p class="hint">已登入：<strong id="loggedEmail"></strong></p>
+          <button class="btn ghost" type="button" id="logoutBtn">登出</button>
+        </div>
+        <p class="status" id="authStatus" hidden></p>
+      </fieldset>
+
+      <footer class="dialog-foot">
+        <button class="btn primary" type="button" id="saveSettings">儲存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
